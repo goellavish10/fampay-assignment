@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,9 +10,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-playground/validator/v10"
+
 	"github.com/goellavish10/fampay-assignment/configs"
+	"github.com/goellavish10/fampay-assignment/models"
 	"github.com/goellavish10/fampay-assignment/responses"
 	"github.com/goellavish10/fampay-assignment/routes"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/exp/slices"
 
 	"github.com/gorilla/mux"
@@ -35,8 +42,9 @@ func main() {
 func callYouTubeApi(apiKey string) {
 	var apiKeysUsed = []string{}
 	var count int = 0
-	recallApiTicker := time.NewTicker(3 * time.Second)
-
+	recallApiTicker := time.NewTicker(20 * time.Second)
+	var validate = validator.New()
+	var videoCollection *mongo.Collection = configs.GetMongoCollection(configs.DB, "videos")
 	for msg := range recallApiTicker.C {
 		fmt.Println("Calling YouTube API at: ", msg)
 		// Calling the YouTube API
@@ -89,6 +97,67 @@ func callYouTubeApi(apiKey string) {
 
 		var responseObject responses.Response
 		json.Unmarshal(bodyBytes, &responseObject)
+		// fmt.Println(responseObject.Items)
+
+		for k := 0; k < len(responseObject.Items); k++ {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			var video models.Video
+			defer cancel()
+
+			if validationErr := validate.Struct(&video); validationErr != nil {
+				fmt.Println("Validation Error: ", validationErr)
+				continue
+			}
+
+			// Check if the video already exists in the database
+			// objId, _ := primitive.ObjectIDFromHex(responseObject.Items[k].ID.VideoID)
+			var filter = bson.M{"videoid": responseObject.Items[k].ID.VideoID}
+			err := videoCollection.FindOne(ctx, filter).Decode(&video)
+
+			fmt.Println(err)
+
+			if err != nil {
+				// Video does not exist in the database
+				newVideo := models.Video{
+					Id:          primitive.NewObjectID(),
+					Title:       responseObject.Items[k].Snippet.Title,
+					Description: responseObject.Items[k].Snippet.Description,
+					PublishedAt: responseObject.Items[k].Snippet.PublishedAt,
+					VideoId:     responseObject.Items[k].ID.VideoID,
+					Thumbnail: models.Thumbnail{
+						Default: models.ThumbnailProperties{
+							Url:    responseObject.Items[k].Snippet.Thumbnails.Default.Url,
+							Width:  responseObject.Items[k].Snippet.Thumbnails.Default.Width,
+							Height: responseObject.Items[k].Snippet.Thumbnails.Default.Height,
+						},
+						Medium: models.ThumbnailProperties{
+							Url:    responseObject.Items[k].Snippet.Thumbnails.Medium.Url,
+							Width:  responseObject.Items[k].Snippet.Thumbnails.Medium.Width,
+							Height: responseObject.Items[k].Snippet.Thumbnails.Medium.Height,
+						},
+						High: models.ThumbnailProperties{
+							Url:    responseObject.Items[k].Snippet.Thumbnails.High.Url,
+							Width:  responseObject.Items[k].Snippet.Thumbnails.High.Width,
+							Height: responseObject.Items[k].Snippet.Thumbnails.High.Height,
+						},
+					},
+				}
+
+				// Inserting the video into the database
+				result, err := videoCollection.InsertOne(ctx, newVideo)
+
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				fmt.Println("Inserted a single document: ", result.InsertedID)
+				continue
+			}
+
+			fmt.Println("Video already exists in the database: ", video.Title)
+
+		}
+
 		resp.Body.Close()
 		// fmt.Println(responseObject)
 	}

@@ -23,17 +23,17 @@ type Response struct {
 			Description string `json:"description"`
 			Thumbnails  struct {
 				Default struct {
-					URL    string `json:"url"`
+					Url    string `json:"url"`
 					Width  int    `json:"width"`
 					Height int    `json:"height"`
 				} `json:"default"`
 				Medium struct {
-					URL    string `json:"url"`
+					Url    string `json:"url"`
 					Width  int    `json:"width"`
 					Height int    `json:"height"`
 				} `json:"medium"`
 				High struct {
-					URL   string `json:"url"`
+					Url   string `json:"url"`
 					Width int    `json:"width"`
 
 					Height int `json:"height"`
