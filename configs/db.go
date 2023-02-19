@@ -35,6 +35,14 @@ var DB *mongo.Client = ConnectDB()
 
 func GetMongoCollection(client *mongo.Client, collectionName string) *mongo.Collection {
 	collection := client.Database("fampay-assignment").Collection(collectionName)
+	// mod := mongo.IndexModel{Keys: bson.D{{Key: "title", Value: "text"}}}
+	// name, err := collection.Indexes().CreateOne(context.TODO(), mod)
+
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Println("Created index: ", name)
 
 	return collection
 }

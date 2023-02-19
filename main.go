@@ -50,7 +50,7 @@ func callYouTubeApi(apiKey string) {
 		// Calling the YouTube API
 		client := &http.Client{}
 
-		req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/search?key="+apiKey+"&part=snippet&maxResults=50&order=date&publishedAfter=2018-01-01T00:00:00Z&q=asmr&type=video", nil)
+		req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/search?key="+apiKey+"&part=snippet&maxResults=50&order=date&publishedAfter=2018-01-01T00:00:00Z&q=programming&type=video", nil)
 
 		if err != nil {
 			fmt.Println(err.Error())
